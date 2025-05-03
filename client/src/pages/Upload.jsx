@@ -6,7 +6,9 @@ import {
   HarmBlockThreshold,
 } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI('AIzaSyAnlRGXg0UOgdhlgJbJE9bdNEi-xAqW6Bs'); // Replace this with your actual API key
+const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 const Upload = () => {
   const [jsonData, setJsonData] = useState([]);
