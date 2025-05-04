@@ -4,7 +4,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 exports.sendBulkEmail = async (req, res) => {
   const { recipients } = req.body;
-
+    console.log(recipients);
   if (!Array.isArray(recipients)) {
     return res.status(400).json({ success: false, message: 'Invalid data format' });
   }

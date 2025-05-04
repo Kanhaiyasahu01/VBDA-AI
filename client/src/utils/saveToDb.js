@@ -18,7 +18,7 @@ export const saveRowToDB = async (row) => {
     const response = await axios.put(`${import.meta.env.VITE_BASE_URL}/update-invitation`, row, {
       headers: { 'Content-Type': 'application/json' },
     });
-    console.log(response);
+    console.log("res",response);
 
     if (response.status !== 200) {
       throw new Error(response.data.message || 'Failed to update row in DB.');
