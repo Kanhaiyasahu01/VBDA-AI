@@ -4,7 +4,6 @@ const Sidebar = () => {
   const links = [
     { to: '/', label: 'Upload' },
     { to: '/preview-edit', label: 'Preview & Edit' },
-    { to: '/schedule-bulk', label: 'Schedule & Send Bulk' },
     { to: '/analytics', label: 'View Analytics' },
   ];
 

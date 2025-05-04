@@ -10,7 +10,7 @@ const {sendBulkEmails} = require("../utils/emailSender")
  * Scheduled job to send follow-up and reminder emails
  * Runs at 1:00 AM every day
  */
-cron.schedule('*/20 * * * * *', async () => {
+cron.schedule('0 1 * * *', async () => {
     console.log('🔁 Running email scheduler...');
     const now = new Date();
     
