@@ -1,118 +1,176 @@
 import { useState } from 'react';
-import Papa from 'papaparse';
-import {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} from '@google/generative-ai';
-
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-const genAI = new GoogleGenerativeAI(geminiApiKey);
+import parseCSV from '../utils/parseCSV';
+import { generateEmails } from '../utils/generateEmails';
+import { saveToDB, saveRowToDB } from '../utils/saveToDb'; // Add updateRowInDB method
+import { handleSendEmails } from '../utils/sendEmail';
 
 const Upload = () => {
   const [jsonData, setJsonData] = useState([]);
+  const [uploadMessage, setUploadMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [fileError, setFileError] = useState('');
+  const [error, setError] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [editingContent, setEditingContent] = useState({});
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const FIELDS_TO_SHOW = ['firstName', 'email', 'organization', 'role', 'achievement', 'aiGeneratedContent', 'status'];
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-
     if (!file || file.type !== 'text/csv') {
-      setFileError('Please upload a valid CSV file.');
+      setError('Please upload a valid CSV file.');
       return;
     }
 
-    setFileError('');
+    setError('');
     setLoading(true);
+    setFileName(file.name);
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data;
-        const enrichedRows = await generateEmails(rows);
+    try {
+      const parsedRows = await parseCSV(file);
+      const enrichedRows = await generateEmails(parsedRows);
+      const dbRes = await saveToDB(enrichedRows);
+
+      if (dbRes.success) {
+        setJsonData(dbRes.data.inserted);
+        setUploadMessage(`✅ Processed and saved ${dbRes.data.insertedCount} records.`);
+      } else {
+        setUploadMessage('⚠️ Email generated but saving to DB failed.');
         setJsonData(enrichedRows);
-        setLoading(false);
-      },
-    });
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to process file.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const generateEmails = async (rows) => {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash', // Use 'gemini-1.5-pro' for more detailed responses
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-      ],
-    });
+  const handleReupload = () => {
+    setJsonData([]);
+    setUploadMessage('');
+    setFileName('');
+  };
 
-    const updatedRows = await Promise.all(
-      rows.map(async (row) => {
-        const prompt = `Generate a personalized, professional email based on the following user data:\n${JSON.stringify(row)}`;
-        try {
-          const result = await model.generateContent(prompt);
-          const response = await result.response;
-          const email = response.text();
-          return { ...row, email };
-        } catch (err) {
-          console.error('Gemini error:', err);
-          return { ...row, email: 'Error generating email.' };
-        }
-      })
-    );
+  const handleContentChange = (index, value) => {
+    setEditingContent((prev) => ({ ...prev, [index]: value }));
+  };
 
-    return updatedRows;
+  const handleToggleExpand = (index) => {
+    setExpandedRows((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const handleSave = async (index) => {
+    const updatedRow = {
+      ...jsonData[index],
+      aiGeneratedContent: editingContent[index] || jsonData[index].aiGeneratedContent,
+    };
+
+    try {
+      const res = await saveRowToDB(updatedRow); // send updated row to backend
+      if (res.success) {
+        const updated = [...jsonData];
+        updated[index] = updatedRow;
+        setJsonData(updated);
+        setEditingContent((prev) => {
+          const copy = { ...prev };
+          delete copy[index];
+          return copy;
+        });
+        setUploadMessage('✅ Row updated successfully.');
+      } else {
+        setError('❌ Failed to update row in DB.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('❌ Server error while updating.');
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4">Upload CSV to Generate Emails</h2>
+    <div className="max-w-6xl mx-auto p-6 bg-white shadow rounded">
+      <h1 className="text-2xl font-bold mb-4">Upload CSV & Generate Emails</h1>
 
-      <input
-        type="file"
-        accept=".csv"
-        onChange={handleFileUpload}
-        className="mb-4"
-      />
-
-      {fileError && <p className="text-red-500">{fileError}</p>}
-      {loading && (
-        <p className="text-blue-600">
-          Processing CSV and generating emails using Gemini...
-        </p>
+      {jsonData.length === 0 && (
+        <>
+          <input type="file" accept=".csv" onChange={handleFileUpload} className="mb-4" />
+          {fileName && <p className="text-gray-700">📄 Selected: {fileName}</p>}
+        </>
       )}
 
+      {loading && <p className="text-blue-500">⏳ Processing...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+      {uploadMessage && <p className="text-green-600">{uploadMessage}</p>}
+
       {jsonData.length > 0 && (
-        <div className="overflow-x-auto mt-6">
-          <table className="min-w-full border border-gray-300 text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                {Object.keys(jsonData[0]).map((key) => (
-                  <th
-                    key={key}
-                    className="border px-3 py-2 text-left whitespace-nowrap"
-                  >
-                    {key}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {jsonData.map((row, i) => (
-                <tr key={i} className="border-t">
-                  {Object.values(row).map((val, j) => (
-                    <td key={j} className="border px-3 py-2 whitespace-pre-wrap">
-                      {val}
-                    </td>
+        <>
+          <button
+            onClick={handleReupload}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-4"
+          >
+            🔁 Re-upload CSV
+          </button>
+
+          {/* Send Emails Button */}
+          <button
+            onClick={() => handleSendEmails(jsonData, setUploadMessage, setError, setLoading)}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4 ml-4"
+          >
+            ✉️ Send Emails
+          </button>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-gray-300 text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  {FIELDS_TO_SHOW.map((field) => (
+                    <th key={field} className={`border px-3 py-2 text-left capitalize ${field === 'aiGeneratedContent' ? 'w-[400px]' : ''}`}>
+                      {field}
+                    </th>
                   ))}
+                  <th className="border px-3 py-2">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {jsonData.map((row, i) => (
+                  <tr key={i} className="border-t align-top">
+                    {FIELDS_TO_SHOW.map((field) => (
+                      <td key={field} className="border px-3 py-2 whitespace-pre-wrap">
+                        {field === 'aiGeneratedContent' ? (
+                          <div className="flex flex-col gap-1">
+                            <textarea
+                              value={editingContent[i] ?? row[field]}
+                              onChange={(e) => handleContentChange(i, e.target.value)}
+                              className="w-full border rounded p-1 text-sm resize-y"
+                              rows={expandedRows[i] ? 6 : 3}
+                              style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}
+                            />
+                            <button
+                              onClick={() => handleToggleExpand(i)}
+                              className="text-blue-500 text-xs w-fit"
+                            >
+                              {expandedRows[i] ? 'View Less' : 'View More'}
+                            </button>
+                          </div>
+                        ) : (
+                          row[field] ?? '-'
+                        )}
+                      </td>
+                    ))}
+                    <td className="border px-3 py-2">
+                      <button
+                        onClick={() => handleSave(i)}
+                        className="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded"
+                      >
+                        Save
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
