@@ -28,6 +28,7 @@ app.use(
 // Connect to the database
 database.connect();
 
+
 // Middleware to parse JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -36,6 +37,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/v1", routes);
 
 // Default route
+require("./cron/scheduler");
+
 app.get("/", (req, res) => {
   return res.json({
     success: true,
