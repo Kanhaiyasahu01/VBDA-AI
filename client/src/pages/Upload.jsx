@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiFile, FiUploadCloud, FiSave, FiClock, FiRefreshCw, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import parseCSV from "../utils/parseCSV";
 import { generateEmails } from "../utils/generateEmails";
 import { saveToDB, saveRowToDB } from "../utils/saveToDb";
@@ -42,7 +43,6 @@ const Upload = () => {
 
       const emailTemplate = await fetchTemplateByType('initial');
       console.log("email template",emailTemplate);
-
       
       const enrichedRows = await generateEmails(parsedRows,emailTemplate?.template);
 
@@ -133,146 +133,179 @@ const Upload = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white shadow rounded">
-      <h1 className="text-2xl font-bold mb-4">Upload CSV & Generate Emails</h1>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="border-b border-gray-200 px-6 py-4">
+        <h1 className="text-xl font-semibold text-gray-800">Upload CSV & Generate Emails</h1>
+      </div>
 
-      {/* Send Option */}
-      {jsonData.length === 0 && (
-        <>
-          <div className="mb-4">
-            <label className="font-semibold block mb-2">
-              📤 Choose Send Option:
-            </label>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  value="now"
-                  checked={sendOption === "now"}
-                  onChange={(e) => setSendOption(e.target.value)}
-                />
-                Send Now
-              </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  value="schedule"
-                  checked={sendOption === "schedule"}
-                  onChange={(e) => setSendOption(e.target.value)}
-                />
-                Schedule Later
-              </label>
-            </div>
-            {sendOption === "schedule" && (
-              <div className="mt-2">
-                <input
-                  type="datetime-local"
-                  className="border p-2 rounded"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                />
+      <div className="p-6">
+        {/* Send Option */}
+        {jsonData.length === 0 && (
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <h2 className="font-medium text-gray-700 mb-4 flex items-center">
+                <FiClock className="mr-2" /> Send Options
+              </h2>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="now"
+                    checked={sendOption === "now"}
+                    onChange={(e) => setSendOption(e.target.value)}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Send Now</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="schedule"
+                    checked={sendOption === "schedule"}
+                    onChange={(e) => setSendOption(e.target.value)}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Schedule Later</span>
+                </label>
               </div>
-            )}
+              {sendOption === "schedule" && (
+                <div className="mt-4">
+                  <input
+                    type="datetime-local"
+                    className="border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* File Upload */}
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <h2 className="font-medium text-gray-700 mb-4 flex items-center">
+                <FiFile className="mr-2" /> Upload CSV File
+              </h2>
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8">
+                <FiUploadCloud className="text-gray-400 mb-2" size={36} />
+                <p className="text-sm text-gray-500 mb-4">Drag and drop or click to browse</p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer"
+                >
+                  Select File
+                </label>
+                {fileName && (
+                  <p className="mt-4 text-sm text-gray-700 flex items-center">
+                    <FiFile className="mr-1" /> {fileName}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* File Upload */}
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            className="mb-4"
-          />
-          {fileName && <p className="text-gray-700">📄 Selected: {fileName}</p>}
-        </>
-      )}
+        {loading && (
+          <div className="flex items-center justify-center p-4 bg-blue-50 text-blue-700 rounded-md">
+            <div className="animate-spin mr-2">
+              <FiRefreshCw />
+            </div>
+            <p>Processing your data...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-md mt-4">
+            {error}
+          </div>
+        )}
+        
+        {uploadMessage && (
+          <div className="p-4 bg-green-50 text-green-700 rounded-md mt-4">
+            {uploadMessage}
+          </div>
+        )}
 
-      {loading && <p className="text-blue-500">⏳ Processing...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {uploadMessage && <p className="text-green-600">{uploadMessage}</p>}
+        {jsonData.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={handleReupload}
+              className="mb-6 inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md shadow-sm transition-colors"
+            >
+              <FiRefreshCw className="mr-2" /> Upload Another CSV
+            </button>
 
-      {jsonData.length > 0 && (
-        <>
-          <button
-            onClick={handleReupload}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-4"
-          >
-            🔁 Re-upload CSV
-          </button>
-
-          {/* <button
-            onClick={() => handleSendEmails(jsonData, setUploadMessage, setError, setLoading)}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4 ml-4"
-          >
-            ✉️ Send Emails
-          </button> */}
-
-          {/* Table Rendering */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-300 text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  {FIELDS_TO_SHOW.map((field) => (
-                    <th
-                      key={field}
-                      className={`border px-3 py-2 text-left capitalize ${
-                        field === "aiGeneratedContent" ? "w-[400px]" : ""
-                      }`}
-                    >
-                      {field}
-                    </th>
-                  ))}
-                  <th className="border px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jsonData.map((row, i) => (
-                  <tr key={i} className="border-t align-top">
+            {/* Table Rendering */}
+            <div className="overflow-x-auto mt-4 bg-white rounded-lg border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
                     {FIELDS_TO_SHOW.map((field) => (
-                      <td
+                      <th
                         key={field}
-                        className="border px-3 py-2 whitespace-pre-wrap"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
-                        {field === "aiGeneratedContent" ? (
-                          <div className="flex flex-col gap-1">
-                            <textarea
-                              value={editingContent[i] ?? row[field]}
-                              onChange={(e) =>
-                                handleContentChange(i, e.target.value)
-                              }
-                              className="w-full border rounded p-1 text-sm resize-y"
-                              rows={expandedRows[i] ? 6 : 3}
-                              style={{
-                                whiteSpace: "pre-wrap",
-                                overflowWrap: "break-word",
-                              }}
-                            />
-                            <button
-                              onClick={() => handleToggleExpand(i)}
-                              className="text-blue-500 text-xs w-fit"
-                            >
-                              {expandedRows[i] ? "View Less" : "View More"}
-                            </button>
-                          </div>
-                        ) : (
-                          row[field] ?? "-"
-                        )}
-                      </td>
+                        {field === "aiGeneratedContent" ? "Email Content" : field}
+                      </th>
                     ))}
-                    <td className="border px-3 py-2">
-                      <button
-                        onClick={() => handleSave(i)} // Pass entire row here
-                        className="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded"
-                      >
-                        Save
-                      </button>
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {jsonData.map((row, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      {FIELDS_TO_SHOW.map((field) => (
+                        <td
+                          key={field}
+                          className="px-4 py-4 text-sm text-gray-700 whitespace-pre-wrap align-top"
+                        >
+                          {field === "aiGeneratedContent" ? (
+                            <div className="flex flex-col gap-1">
+                              <textarea
+                                value={editingContent[i] ?? row[field]}
+                                onChange={(e) =>
+                                  handleContentChange(i, e.target.value)
+                                }
+                                className="w-full border rounded-md p-2 text-sm resize-y focus:ring-indigo-500 focus:border-indigo-500"
+                                rows={expandedRows[i] ? 8 : 3}
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  overflowWrap: "break-word",
+                                }}
+                              />
+                              
+                            </div>
+                          ) : (
+                            <div className="max-w-xs truncate">
+                              {row[field] ?? "-"}
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-4 text-sm whitespace-nowrap">
+                        <button
+                          onClick={() => handleSave(i)}
+                          className="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md shadow-sm transition-colors"
+                        >
+                          <FiSave className="mr-1" /> Save
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 };

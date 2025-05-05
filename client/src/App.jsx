@@ -17,7 +17,7 @@ const App = () => {
       </Route>
 
       <Route path="/respond" element={<Respond />} />
-      </Routes>
+    </Routes>
   );
 };
 

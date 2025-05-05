@@ -13,7 +13,7 @@ const seedDataInv = async () => {
   const invitations = [
     {
       firstName: "John",
-      email: "john.doe@example.com",
+      email: "kanhaiyasahutools@gmail.com",
       organization: "Organization A",
       role: "Speaker",
       achievement: "Researcher in AI",
@@ -37,7 +37,7 @@ const seedDataInv = async () => {
     },
     {
       firstName: "Alice",
-      email: "alice.smith@example.com",
+      email: "ksahu9143@gmail.com",
       organization: "Organization B",
       role: "Panelist",
       achievement: "Expert in Data Science",

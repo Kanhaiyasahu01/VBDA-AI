@@ -35,81 +35,81 @@ const generateEmails = async (rows, emailTemplate) => {
   console.log("Inside generate emails function");
   console.log("Template type:", emailTemplate?.type);
 
-  // Convert emailTemplate to plain object if it's a MongoDB document
   const template = emailTemplate?.toObject ? emailTemplate.toObject() : emailTemplate;
-  
   const promptType = promptMap[template?.type] || promptMap['initial'];
 
   console.log("Preparing the prompts for", rows.length, "recipients");
 
-  const results = [];
+  const results = await Promise.allSettled(
+    rows.map(async (row) => {
+      const invitation = row?.toObject ? row.toObject() : row;
+      const email = invitation.email || '';
+      const firstName = invitation.firstName || invitation.name || 'Guest';
+      const organization = invitation.organization || 'Independent';
+      const role = invitation.role || invitation.position || 'Participant';
+      const achievement = invitation.achievement || '';
+
+      const responseLink = `http://localhost:5173/respond?email=${encodeURIComponent(email)}`;
+
+      console.log(`Processing email for: ${email}`);
+
+      const prompt = `
+      ${promptType}
+      
+      You are generating a personalized email in HTML format.
+      
+      Here is a reference email template for tone, structure, and format:
+      """
+      ${emailTemplate.body.trim()}
+      """
+      
+      Generate a similar email using the following information:
+      - Name: ${sanitize(firstName) || "Guest"}
+      - Organization: ${sanitize(organization) || "Independent"}
+      - Role: ${sanitize(role) || "Participant"}
+      - Achievements: ${
+        sanitize(achievement) || "No notable achievements listed"
+      }
+      
+     Instructions:
+      - Strictly follow the tone, structure, and formatting of the reference email.
+      - Use only HTML tags like <p>, <strong>, <a>, <br/>, etc. Do NOT include <html>, <head>, or <body> tags.
+      - Embed this RSVP/Unsubscribe link as a clickable anchor tag:  
+        <a href="${responseLink}">${responseLink}</a>
+      - Keep the total content under 200 words.
+      - Return ONLY the inner HTML content (no outer HTML document structure).
+      
+      Return only the HTML-formatted email.
+      `.trim();
+
+      try {
+        console.log(`Generating content for ${email}`);
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = await response.text();
+        console.log(`Content generated for ${email}`);
+
+        return {
+          email,
+          aiGeneratedContent: text?.trim() || 'No content generated',
+          subject: template?.subject || "You're Invited to VBDA 2025",
+        };
+      } catch (err) {
+        console.error(`Gemini Error for ${email}:`, err.message);
+        return {
+          email,
+          aiGeneratedContent: '⚠️ Failed to generate content.',
+          subject: template?.subject || "You're Invited to VBDA 2025",
+        };
+      }
+    })
+  );
+
+  // Filter out any failed results
+  const finalResults = results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
   
-  // Process each row sequentially
-  for (const row of rows) {
-    // Convert MongoDB document to plain JavaScript object if needed
-    const invitation = row?.toObject ? row.toObject() : row;
-    
-    // Extract required fields with fallbacks
-    const email = invitation.email || '';
-    const firstName = invitation.firstName || invitation.name || 'Guest';
-    const organization = invitation.organization || 'Independent';
-    const role = invitation.role || invitation.position || 'Participant';
-    const achievement = invitation.achievement || '';
-
-    const responseLink = `http://localhost:5173/respond?email=${encodeURIComponent(email)}`;
-
-    console.log(`Processing email for: ${email}`);
-
-    const prompt = `
-${promptType}
-
-Here is a reference email template for tone and structure:
-"""
-${template?.body?.trim() || ''}
-"""
-
-Please generate a similar email using the following information:
-- Name: ${sanitize(firstName) || 'Guest'}
-- Organization: ${sanitize(organization) || 'Independent'}
-- Role: ${sanitize(role) || 'Participant'}
-- Achievements: ${sanitize(achievement) || 'No notable achievements listed'}
-
-Include this link in the email, where the user can choose to RSVP or Unsubscribe:  
-${responseLink}
-
-Make sure the email starts with "Dear [Name]," and ends with:
-Sincerely,  
-VBDA 2025  
-Invitation for VBDA  
-VBDA Organization
-
-Keep the message respectful, brief, and professional. Do not exceed 200 words.
-    `.trim();
-
-    try {
-      console.log(`Generating content for ${email}`);
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = await response.text();
-      console.log(`Content generated for ${email}`);
-
-      results.push({
-        email,
-        aiGeneratedContent: text?.trim() || 'No content generated',
-        subject: template?.subject || "You're Invited to VBDA 2025",
-      });
-    } catch (err) {
-      console.error(`Gemini Error for ${email}:`, err.message);
-      results.push({
-        email,
-        aiGeneratedContent: '⚠️ Failed to generate content.',
-        subject: template?.subject || "You're Invited to VBDA 2025",
-      });
-    }
-  }
-
   console.log("All email generation tasks completed");
-  return results;
+  return finalResults;
 };
 
 // Export the function as a module for use in other parts of your backend

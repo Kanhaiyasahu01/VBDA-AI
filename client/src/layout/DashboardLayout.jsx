@@ -1,5 +1,3 @@
-
-// layout/DashboardLayout.js
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -17,7 +15,9 @@ const DashboardLayout = () => {
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
