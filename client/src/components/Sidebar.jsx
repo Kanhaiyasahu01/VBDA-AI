@@ -8,19 +8,25 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-gray-800 text-white p-4 space-y-4">
-      <h2 className="text-xl font-bold mb-6">My Dashboard</h2>
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          className={({ isActive }) =>
-            `block px-4 py-2 rounded hover:bg-gray-700 ${isActive ? 'bg-gray-700' : ''}`
-          }
-        >
-          {link.label}
-        </NavLink>
-      ))}
+    <aside className="w-64 bg-gray-800 text-white p-4 space-y-4 h-full shadow-lg">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold tracking-wide">My Dashboard</h2>
+      </div>
+      <nav>
+        {links.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) =>
+              `block px-4 py-2 rounded transition duration-200 ease-in-out hover:bg-gray-700 mb-1 ${
+                isActive ? 'bg-gray-700 text-white' : 'text-gray-300'
+              }`
+            }
+          >
+            {link.label}
+          </NavLink>
+        ))}
+      </nav>
     </aside>
   );
 };

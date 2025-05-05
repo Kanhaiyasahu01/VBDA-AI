@@ -56,6 +56,8 @@ const generateEmails = async (rows, emailTemplate) => {
     const role = invitation.role || invitation.position || 'Participant';
     const achievement = invitation.achievement || '';
 
+    const responseLink = `http://localhost:5173/respond?email=${encodeURIComponent(email)}`;
+
     console.log(`Processing email for: ${email}`);
 
     const prompt = `
@@ -71,6 +73,9 @@ Please generate a similar email using the following information:
 - Organization: ${sanitize(organization) || 'Independent'}
 - Role: ${sanitize(role) || 'Participant'}
 - Achievements: ${sanitize(achievement) || 'No notable achievements listed'}
+
+Include this link in the email, where the user can choose to RSVP or Unsubscribe:  
+${responseLink}
 
 Make sure the email starts with "Dear [Name]," and ends with:
 Sincerely,  

@@ -4,6 +4,7 @@ import Upload from './pages/Upload';
 import PreviewEdit from './pages/PreviewEdit';
 import ScheduleBulk from './pages/ScheduleBulk';
 import Analytics from './pages/Analytics';
+import Respond from './components/Respond';
 
 const App = () => {
   return (
@@ -14,7 +15,9 @@ const App = () => {
         <Route path="schedule-bulk" element={<ScheduleBulk />} />
         <Route path="analytics" element={<Analytics />} />
       </Route>
-    </Routes>
+
+      <Route path="/respond" element={<Respond />} />
+      </Routes>
   );
 };
 

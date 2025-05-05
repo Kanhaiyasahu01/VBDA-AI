@@ -1,14 +1,22 @@
+
+// layout/DashboardLayout.js
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
 
 const DashboardLayout = () => {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Navbar */}
         <Navbar />
-        <main className="flex-1 bg-gray-100 p-4 overflow-y-auto">
+        
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>
