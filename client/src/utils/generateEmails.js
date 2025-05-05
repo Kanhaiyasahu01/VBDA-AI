@@ -37,7 +37,7 @@ export const generateEmails = async (rows, emailTemplate) => {
       const { firstName, email, organization, role, achievement } = row;
 
       // Generate the Gmail unsubscribe or RSVP link
-      const responseLink = `http://localhost:5173/respond?email=${encodeURIComponent(
+      const responseLink = `https://vbda-kanhaiya-sahu.vercel.app/respond?email=${encodeURIComponent(
         email
       )}`;
 

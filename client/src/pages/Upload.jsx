@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FiFile, FiUploadCloud, FiSave, FiClock, FiRefreshCw, FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { FiFile, FiUploadCloud, FiSave, FiClock, FiRefreshCw, FiChevronUp, FiChevronDown, FiAlertCircle } from "react-icons/fi";
 import parseCSV from "../utils/parseCSV";
 import { generateEmails } from "../utils/generateEmails";
 import { saveToDB, saveRowToDB } from "../utils/saveToDb";
@@ -42,9 +42,9 @@ const Upload = () => {
       const parsedRows = await parseCSV(file);
 
       const emailTemplate = await fetchTemplateByType('initial');
-      console.log("email template",emailTemplate);
+      console.log("email template", emailTemplate);
       
-      const enrichedRows = await generateEmails(parsedRows,emailTemplate?.template);
+      const enrichedRows = await generateEmails(parsedRows, emailTemplate?.template);
 
       const rowsWithTiming = enrichedRows.map((row) => ({
         ...row,
@@ -57,6 +57,19 @@ const Upload = () => {
 
       console.log("db res", dbRes);
 
+      // Check for server errors
+      if (!dbRes.success) {
+        if (dbRes.error && dbRes.error.includes("duplicate")) {
+          setError("❌ Failed to save: Duplicate email entries detected. Please ensure all emails are unique.");
+        } else if (dbRes.status === 500) {
+          setError("❌ Server error: The database could not process your request. This might be due to duplicate entries.");
+        } else {
+          setError(`❌ Failed to save data: ${dbRes.error || "Unknown error"}`);
+        }
+        setLoading(false);
+        return;
+      }
+
       const insertedData = dbRes?.data?.data?.inserted;
       console.log("inserted data ", insertedData);
       if (dbRes.success && Array.isArray(insertedData)) {
@@ -66,19 +79,29 @@ const Upload = () => {
         );
 
         if (sendOption === "now") {
-          await handleSendEmails(
-            insertedData,
-            setUploadMessage,
-            setError,
-            setLoading
-          );
+          try {
+            await handleSendEmails(
+              insertedData,
+              setUploadMessage,
+              setError,
+              setLoading
+            );
+          } catch (emailErr) {
+            console.error("Email sending error:", emailErr);
+            setError(`✅ Data saved but failed to send emails: ${emailErr.message || "Unknown error"}`);
+          }
         }
       } else {
         setJsonData(rowsWithTiming); // fallback
+        setUploadMessage("✅ Data processed but there might have been issues with the database operation.");
       }
     } catch (err) {
-      console.error(err);
-      setError("Failed to process file.");
+      console.error("File processing error:", err);
+      if (err.response && err.response.status === 500) {
+        setError("❌ Server error (500): This might be due to duplicate emails or database issues.");
+      } else {
+        setError(`❌ Failed to process file: ${err.message || "Unknown error"}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,6 +110,7 @@ const Upload = () => {
   const handleReupload = () => {
     setJsonData([]);
     setUploadMessage("");
+    setError("");
     setFileName("");
     setSendOption("now");
     setScheduleDate("");
@@ -101,6 +125,9 @@ const Upload = () => {
   };
 
   const handleSave = async (index) => {
+    setError("");
+    setUploadMessage("");
+    
     // Pass the entire row, not just the aiGeneratedContent
     const updatedRow = {
       ...jsonData[index],
@@ -112,7 +139,7 @@ const Upload = () => {
       const res = await saveRowToDB(updatedRow);
 
       console.log("res upload", res);
-      console.log(res.success);
+      
       if (res.success) {
         const updated = [...jsonData];
         updated[index] = updatedRow;
@@ -124,12 +151,35 @@ const Upload = () => {
         });
         setUploadMessage("✅ Row updated successfully.");
       } else {
-        setError("❌ Failed to update row in DB.");
+        if (res.status === 500) {
+          setError("❌ Server error (500): Failed to update. This might be a duplicate email issue.");
+        } else {
+          setError(`❌ Failed to update row: ${res.error || "Unknown error"}`);
+        }
       }
     } catch (err) {
-      console.error(err);
-      setError("❌ Server error while updating.");
+      console.error("Save error:", err);
+      if (err.response && err.response.status === 500) {
+        setError("❌ Server error (500): Failed to update. This might be a duplicate email issue.");
+      } else {
+        setError(`❌ Error while updating: ${err.message || "Unknown server error"}`);
+      }
     }
+  };
+
+  // Function to render error message with better formatting
+  const renderErrorMessage = () => {
+    if (!error) return null;
+    
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-md mt-4 flex items-start">
+        <FiAlertCircle className="mt-1 mr-2 flex-shrink-0" />
+        <div>
+          <p className="font-medium">Error</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -175,6 +225,7 @@ const Upload = () => {
                     className="border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
+                    required={sendOption === "schedule"}
                   />
                 </div>
               )}
@@ -220,15 +271,12 @@ const Upload = () => {
           </div>
         )}
         
-        {error && (
-          <div className="p-4 bg-red-50 text-red-700 rounded-md mt-4">
-            {error}
-          </div>
-        )}
+        {renderErrorMessage()}
         
         {uploadMessage && (
-          <div className="p-4 bg-green-50 text-green-700 rounded-md mt-4">
-            {uploadMessage}
+          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-md mt-4 flex items-start">
+            <div className="mr-2">✅</div>
+            <div>{uploadMessage}</div>
           </div>
         )}
 
@@ -281,7 +329,7 @@ const Upload = () => {
                                   overflowWrap: "break-word",
                                 }}
                               />
-                              
+                            
                             </div>
                           ) : (
                             <div className="max-w-xs truncate">

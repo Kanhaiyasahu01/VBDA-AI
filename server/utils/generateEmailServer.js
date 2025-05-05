@@ -49,7 +49,7 @@ const generateEmails = async (rows, emailTemplate) => {
       const role = invitation.role || invitation.position || 'Participant';
       const achievement = invitation.achievement || '';
 
-      const responseLink = `http://localhost:5173/respond?email=${encodeURIComponent(email)}`;
+      const responseLink = `https://vbda-kanhaiya-sahu.vercel.app/respond?email=${encodeURIComponent(email)}`;
 
       console.log(`Processing email for: ${email}`);
 
